@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit 7</title>
+<!-- Tailwind for Styling -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- FontAwesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+body {
+font-family: 'Inter', sans-serif;
+-webkit-font-smoothing: antialiased;
+}
+.animate-in {
+animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+.mic-active {
+animation: pulse-red 1.2s infinite;
+color: white !important;
+background-color: #ef4444 !important;
+border-color: #dc2626 !important;
+}
+@keyframes pulse-red {
+0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+/* Simple glassmorphism scrollbar */
+::-webkit-scrollbar {
+width: 6px;
+}
+::-webkit-scrollbar-track {
+background: transparent;
+}
+::-webkit-scrollbar-thumb {
+background: #cbd5e1;
+border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+background: #94a3b8;
+}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen p-3 md:p-8">
+
+<div class="max-w-6xl mx-auto">
+<!-- Header -->
+<header class="flex flex-col lg:flex-row justify-between items-center mb-8 gap-4 border-b border-slate-200 pb-6">
+<div class="flex items-center gap-4">
+<div class="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-100">
+<i class="fa-solid fa-languages text-2xl"></i>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h1 class="text-4xl font-black italic tracking-tighter leading-none uppercase text-slate-800">Unit 7</h1>
+</div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">VEP - Listening and Speaking (LS103)</p>
+</div>
+</div>
+
+<nav class="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200">
+<button onclick="switchTab('bank')" id="tab-bank" class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-indigo-600 text-white shadow-md">
+<i class="fa-solid fa-book-open text-xs"></i> Language Bank
+</button>
+<button onclick="switchTab('pronounce')" id="tab-pronounce" class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-slate-600">
+<i class="fa-solid fa-circle-play text-xs"></i> Mouth Shapes & Vowels
+</button>
+<button onclick="switchTab('practice')" id="tab-practice" class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-slate-600">
+<i class="fa-solid fa-comment-dots text-xs"></i> Conversation Practice
+</button>
+</nav>
+</header>
+
+<!-- Interactive Warning Alert banner about communication standard -->
+<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+<span class="text-amber-500 text-lg mt-0.5"><i class="fa-solid fa-circle-exclamation"></i></span>
+<div>
+<h4 class="text-xs font-bold text-amber-800">Professional Standard Guidelines (Unit 7)</h4>
+<p class="text-[11px] text-amber-700 mt-0.5">Always avoid blunt refutations such as <span class="font-semibold italic">"I don't know!"</span>. Instead, politely decline requests using policy rules: <span class="italic">"I'm sorry we don't provide..."</span> or offer alternative solutions: <span class="italic">"You can take it when you finish..."</span></p>
+</div>
+</div>
+
+<!-- Main Content Area -->
+<main id="view-container" class="animate-in">
+<!-- Content Injected via JavaScript -->
+</main>
+</div>
+
+<script>
+// --- CURRICULUM DATA ---
+const DATA = {
+bank: [
+{
+category: "L1: Apologies & Responding",
+icon: "fa-hands-praying text-emerald-500",
+subsections: [
+{
+title: "Apologising",
+items: [
+"I'm sorry.",
+"I'm so sorry for [the inconvenience].",
+"I'm very sorry, [Ms Ryan].",
+"I'm really sorry for [the problem.]",
+"Sorry to keep you waiting."
+]
+},
+{
+title: "Responding to Apologies",
+items: [
+"Never mind.",
+"That's all right.",
+"Don't worry."
+]
+}
+]
+},
+{
+category: "L4: Availability of Facilities & Services",
+icon: "fa-bell-concierge text-indigo-500",
+subsections: [
+{
+title: "Expressing Unavailability",
+items: [
+"I'm sorry but [this evening's fully booked].",
+"I'm sorry but we don't have [this service].",
+"We're open to members only. Please fill in a form to join.",
+"We're open to all."
+]
+},
+{
+title: "e.g. Guest: Do you provide [any lockers]?",
+items: [
+"Yes, here's the key. Please sign here.",
+"Here's [the locker key, sir].",
+"You'll find [towels inside].",
+"Please go to [our fitness centre]."
+]
+},
+{
+title: "e.g. Guest: Can I drink around the pool?",
+items: [
+"We have a [pool bar]. You may [order drinks] there."
+]
+},
+{
+title: "e.g. Guest: Can I use the pool?",
+items: [
+"Are you a club member?"
+]
+},
+{
+title: "e.g. Guest: Do you provide [tennis balls]?",
+items: [
+"Yes, you need to pay [$20 per ball].",
+"Please leave your [room key] here.",
+"You can take it when you finish [your workout].",
+"We need to charge for [extra tennis balls].",
+"Yes, but you need to pay a fee of [$10].",
+"Yes, but you need to show your [passport]."
+]
+},
+{
+title: "e.g. Guest: Do you have [facials] for guests?",
+items: [
+"Yes, you need to pay $500 for each session."
+]
+},
+{
+title: "e.g. Guest: Can I have [an extra pack]?",
+items: [
+"I'll bring [an extra pack] right away.",
+"I'll bring it [for you right away].",
+"Let me get some for you.",
+"I'll get you one."
+]
+},
+{
+title: "e.g. Guest: The [towels] are dirty.",
+items: [
+"I'll replace them for you."
+]
+}
+]
+},
+{
+category: "L5: Offering General Help",
+icon: "fa-handshake-angle text-indigo-500",
+subsections: [
+{
+title: "Help & Weather Courtesies",
+items: [
+"Can I help you with anything?",
+"How can I help you?",
+"May I help you?",
+"It's raining outside. Do you have an umbrella?",
+"Do you need anything?",
+"Is everything ok?",
+"Would you like some help?"
+]
+}
+]
+},
+{
+category: "L6: Declining Guests' Requests & Explaining Rules",
+icon: "fa-ban text-red-500",
+subsections: [
+{
+title: "Explaining Policies Firmly & Politely",
+items: [
+"I'm sorry we don't provide this in our [office].",
+"There must be [a misunderstanding].",
+"We can't open the windows in the [office].",
+"You can't [smoke] in the [office].",
+"You can't [use the mobile phone] here.",
+"But we don't let [small children exercise alone].",
+"No [mobile phones] here. Please go [outside].",
+"You can't [take photos] here. Please go [outside the gym].",
+"Sorry, no [smoking] here. Please go to [the garden]."
+]
+},
+{
+title: "e.g. Guest: Do you provide [any swimwear]?",
+items: [
+"I'm sorry. We don't provide [any swimwear]."
+]
+},
+{
+title: "e.g. Guest: Will you get us some [sun tan lotion]?",
+items: [
+"I'm sorry. We don't provide any [sun tan lotion]."
+]
+}
+]
+}
+],
+vowels: [
+{ pair: "and - end", type: "Spread" },
+{ pair: "bat - bet", type: "Spread" },
+{ pair: "bad - bed", type: "Spread" },
+{ pair: "batter - better", type: "Spread" },
+{ pair: "cat - keg", type: "Spread" },
+{ pair: "cattle - kettle", type: "Spread" },
+{ pair: "fat - fed", type: "Spread" },
+{ pair: "lad - led", type: "Spread" },
+{ pair: "pat - pet", type: "Spread" },
+{ pair: "sat - set", type: "Spread" }
+],
+mouthPractice: [
+{ word: "book", style: "Round Lips", icon: "fa-circle" },
+{ word: "sheet", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "bag", style: "Round Lips", icon: "fa-circle" },
+{ word: "Lens", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "feet", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "more", style: "Round Lips", icon: "fa-circle" },
+{ word: "she", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "back", style: "Round Lips", icon: "fa-circle" },
+{ word: "badge", style: "Round Lips", icon: "fa-circle" },
+{ word: "loon", style: "Round Lips", icon: "fa-circle" },
+{ word: "feel", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "raw", style: "Round Lips", icon: "fa-circle" },
+{ word: "cook", style: "Round Lips", icon: "fa-circle" },
+{ word: "shirt", style: "Round Lips", icon: "fa-circle" },
+{ word: "he", style: "Spread Lips", icon: "fa-ellipsis" },
+{ word: "all", style: "Round Lips", icon: "fa-circle" }
+],
+conversation: [
+{ speaker: "Guest (F)", text: "Good evening!" },
+{ speaker: "Staff (M)", text: "Good evening." },
+{ speaker: "Guest (F)", text: "Can you take a picture for me here, please? I want to show my friends that I..." },
+{ speaker: "Staff (M)", text: "(interrupting) I don't know!" },
+{ speaker: "Guest (F)", text: "Sor-ry! Do you mean you don't know if I can take pictures here, or you don't want to do it for me?" },
+{ speaker: "Staff (M)", text: "I don't know!" },
+{ speaker: "Guest (F)", text: "Excuse me! You keep saying you don't know, but what do you not know, please?" },
+{ speaker: "Staff (M)", text: "Ngo-mmm-sik-nei-gong-di-waa! I don't know! Sol-ly, sol-ly!" },
+{ speaker: "Guest (F)", text: "OK. I'll ask someone else. (aside, furious) I don't know! I don't know!..." }
+]
+};
+
+// --- STATE MANAGEMENT ---
+let currentTab = 'bank';
+let scores = {};
+let lastTranscripts = {};
+let isRecordingId = null;
+let isPlayingId = null;
+let finalTranscriptBuffer = "";
+
+const synth = window.speechSynthesis;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if (SpeechRecognition) {
+recognition = new SpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = true;
+recognition.lang = 'en-US';
+
+recognition.onresult = (event) => {
+let currentSessionText = "";
+for (let i = event.resultIndex; i < event.results.length; ++i) {
+if (event.results[i].isFinal) {
+finalTranscriptBuffer += event.results[i][0].transcript + " ";
+}
+currentSessionText = finalTranscriptBuffer + (event.results[i].isFinal ? "" : event.results[i][0].transcript);
+}
+
+if (isRecordingId) {
+lastTranscripts[isRecordingId] = currentSessionText.trim();
+render();
+}
+};
+
+recognition.onend = () => {
+if (isRecordingId) {
+processResult();
+isRecordingId = null;
+render();
+}
+};
+
+recognition.onerror = (event) => {
+console.error("Recognition Error:", event.error);
+isRecordingId = null;
+render();
+};
+}
+
+// --- SANITIZE STAGE DIRECTIONS FOR TTS & GRADING ---
+function cleanSpeechText(text) {
+// Remove parenthetical instructions like "(shuffling paper)" and extra spaces or dash symbols
+return text.replace(/\([^)]+\)/g, '').replace(/[\–\-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function processResult() {
+if (!isRecordingId) return;
+const targetText = recognition.targetText;
+const capturedText = lastTranscripts[isRecordingId] || "";
+const score = calculateScore(targetText, capturedText);
+scores[isRecordingId] = score;
+}
+
+// --- ACCURATE SCORING ---
+function calculateScore(target, input) {
+const clean = (s) => s.toLowerCase().replace(/[^\w\s]/g, "").trim();
+const tWords = clean(target).split(/\s+/).filter(w => w.length > 0);
+const iWords = clean(input).split(/\s+/).filter(w => w.length > 0);
+
+if (tWords.length === 0 || iWords.length === 0) return 0;
+
+let matches = 0;
+tWords.forEach(tWord => {
+if (iWords.some(iWord => iWord === tWord || iWord.includes(tWord))) {
+matches++;
+}
+});
+
+return Math.round((matches / tWords.length) * 100);
+}
+
+function switchTab(tab) {
+currentTab = tab;
+render();
+}
+
+// --- DYNAMIC TTS VOICE GENERATOR ---
+function playText(text, speaker, id) {
+if (synth.speaking) synth.cancel();
+
+// Clean up bracket placeholders and parenthetical details for speech generator
+const cleanText = cleanSpeechText(text);
+const utter = new SpeechSynthesisUtterance(cleanText);
+
+// High pitch for female guest, lower pitch for male staff
+if (speaker.includes("Guest") || speaker.includes("F")) {
+utter.pitch = 1.35;
+utter.rate = 0.95;
+} else {
+utter.pitch = 0.95;
+utter.rate = 1.0;
+}
+
+utter.onstart = () => { isPlayingId = id; render(); };
+utter.onend = () => { isPlayingId = null; render(); };
+synth.speak(utter);
+}
+
+// --- MICROPHONE CAPTURE TOGGLE ---
+async function toggleMic(id, text) {
+if (isRecordingId === id) {
+recognition.stop();
+return;
+}
+
+if (isRecordingId !== null) {
+recognition.stop();
+}
+
+try {
+await navigator.mediaDevices.getUserMedia({ audio: true });
+finalTranscriptBuffer = "";
+lastTranscripts[id] = "";
+isRecordingId = id;
+recognition.targetText = cleanSpeechText(text); // Target matches the spoken part
+recognition.start();
+render();
+} catch (e) {
+alert("Microphone access denied. Please check your web browser settings and allow mic inputs.");
+}
+}
+
+// --- RENDER DOM ENGINE ---
+function render() {
+const container = document.getElementById('view-container');
+const bankBtn = document.getElementById('tab-bank');
+const pronounceBtn = document.getElementById('tab-pronounce');
+const pracBtn = document.getElementById('tab-practice');
+
+// Reset inactive class styles
+[bankBtn, pronounceBtn, pracBtn].forEach(btn => {
+btn.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-slate-600";
+});
+
+if (currentTab === 'bank') {
+bankBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-indigo-600 text-white shadow-md";
+} else if (currentTab === 'pronounce') {
+pronounceBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-indigo-600 text-white shadow-md";
+} else {
+pracBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-indigo-600 text-white shadow-md";
+}
+
+// --- LANGUAGE BANK RENDER ---
+if (currentTab === 'bank') {
+container.innerHTML = `
+<div class="grid lg:grid-cols-2 gap-6 pb-12 animate-in">
+${DATA.bank.map((cat, cIdx) => `
+<div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+<div class="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200">
+<i class="fa-solid ${cat.icon} text-sm"></i>
+</div>
+<h3 class="font-extrabold text-slate-700 text-xs uppercase tracking-wide">${cat.category}</h3>
+</div>
+</div>
+
+<div class="p-4 space-y-6 flex-1">
+${cat.subsections.map((sub, sIdx) => `
+<div>
+<h4 class="text-[10px] font-black text-slate-400 uppercase mb-3 px-2.5 tracking-wider border-l-2 border-indigo-500 ml-1">
+${sub.title}
+</h4>
+<div class="space-y-1.5">
+${sub.items.map((item, iIdx) => {
+const id = `bank-${cIdx}-${sIdx}-${iIdx}`;
+const score = scores[id];
+const transcript = lastTranscripts[id];
+const isRec = isRecordingId === id;
+return `
+<div class="p-3 rounded-2xl transition-all border ${score !== undefined ? 'bg-indigo-50/20 border-indigo-100' : 'hover:bg-slate-50 border-transparent'}">
+<div class="flex items-center justify-between gap-4">
+<span class="text-xs font-semibold text-slate-700 tracking-tight leading-relaxed">
+${item.replace(/\[/g, '<span class="text-indigo-600 font-bold bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">').replace(/\]/g, '</span>')}
+</span>
+
+<div class="flex items-center gap-1 shrink-0">
+<!-- TTS Speak Button -->
+<button onclick="playText('${item.replace(/'/g, "\\'")}', 'Staff', '${id}')"
+class="p-2 rounded-xl transition-all ${isPlayingId === id ? 'text-indigo-600 bg-indigo-100' : 'text-slate-300 hover:text-indigo-600'}">
+<i class="fa-solid fa-volume-high ${isPlayingId === id ? 'fa-beat' : ''}"></i>
+</button>
+
+<!-- Voice Recorder Engine -->
+<button onclick="toggleMic('${id}', '${item.replace(/'/g, "\\'")}')"
+class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-[10px] font-bold ${isRec ? 'mic-active' : 'text-slate-400 bg-slate-100 hover:text-indigo-600'}">
+<i class="fa-solid fa-microphone text-xs"></i>
+${isRec ? 'SUBMIT' : 'TRY'}
+</button>
+</div>
+</div>
+
+<!-- Dynamic Score Box -->
+${(isRec && transcript) || score !== undefined ? `
+<div class="mt-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 animate-in">
+<p class="text-[9px] font-bold text-slate-400 uppercase">What we recognized:</p>
+<p class="text-xs italic text-slate-600 mt-0.5">"${transcript || 'Speak now...'}"</p>
+${score !== undefined ? `
+<div class="mt-2 flex items-center gap-3">
+<div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-indigo-500 rounded-full" style="width: ${score}%"></div>
+</div>
+<span class="text-[10px] font-bold text-indigo-600">${score}% Score</span>
+</div>
+` : ''}
+</div>
+` : ''}
+</div>
+`;
+}).join('')}
+</div>
+</div>
+`).join('')}
+</div>
+</div>
+`).join('')}
+</div>
+`;
+
+// --- PRONUNCIATION & MOUTH SHAPES RENDER ---
+} else if (currentTab === 'pronounce') {
+container.innerHTML = `
+<div class="space-y-6 pb-12 animate-in">
+
+<!-- Vowel Lip Shape Guides -->
+<div class="grid md:grid-cols-2 gap-6">
+<div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<span class="p-2 bg-emerald-50 text-emerald-600 rounded-xl text-lg"><i class="fa-solid fa-ellipsis"></i></span>
+<div>
+<h3 class="font-extrabold text-slate-800 text-sm">Spread Lips Shape</h3>
+<p class="text-[10px] text-slate-400">Keep mouth relatively flat, edges of lips pulled outward</p>
+</div>
+</div>
+<p class="text-xs text-slate-600 leading-relaxed mb-4">
+Used heavily in words like <span class="font-bold underline text-emerald-600">sheet</span>, <span class="font-bold underline text-emerald-600">feet</span>, and <span class="font-bold underline text-emerald-600">feel</span>. The tongue is forward, and the cheeks are slightly tight.
+</p>
+<div class="h-24 bg-emerald-50/50 rounded-2xl flex items-center justify-center border border-emerald-100">
+<span class="text-4xl">👄</span>
+<span class="text-xs font-bold text-emerald-700 ml-4">Wide Shape (↔️)</span>
+</div>
+</div>
+
+<div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<span class="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-lg"><i class="fa-solid fa-circle"></i></span>
+<div>
+<h3 class="font-extrabold text-slate-800 text-sm">Round Lips Shape (*)</h3>
+<p class="text-[10px] text-slate-400">Pucker lips together to form an O-shape</p>
+</div>
+</div>
+<p class="text-xs text-slate-600 leading-relaxed mb-4">
+Occurs in words designated with <span class="font-bold text-indigo-600 font-mono">*</span> like <span class="font-bold underline text-indigo-600">book</span>, <span class="font-bold underline text-indigo-600">more</span>, and <span class="font-bold underline text-indigo-600">raw</span>. Make sure to project the sound forward.
+</p>
+<div class="h-24 bg-indigo-50/50 rounded-2xl flex items-center justify-center border border-indigo-100">
+<span class="text-4xl">😮</span>
+<span class="text-xs font-bold text-indigo-700 ml-4">Rounded Shape (⭕)</span>
+</div>
+</div>
+</div>
+
+<!-- L2: Vowel Minimal Pairs Table -->
+<div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="p-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+<div>
+<h3 class="text-xs font-black text-slate-500 uppercase tracking-wider">L2: Vowels Minimal Pairs (Spread vs. Round)</h3>
+<p class="text-[10px] text-slate-400 mt-1">Practise switching your lip geometry between minimal pairs</p>
+</div>
+</div>
+<div class="p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+${DATA.vowels.map((item, idx) => {
+const id = `vowel-pair-${idx}`;
+return `
+<div class="p-3 bg-slate-50/60 hover:bg-slate-100/60 rounded-2xl border border-slate-200/50 flex flex-col justify-between gap-3 text-center transition-all">
+<span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${item.type} Vowel</span>
+<span class="text-xs font-extrabold text-slate-700">${item.pair}</span>
+<button onclick="playText('${item.pair.replace(/'/g, "\\'")}', 'Staff', '${id}')"
+class="w-full py-1.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 transition-all hover:shadow-sm">
+<i class="fa-solid fa-volume-high text-xs"></i> Listen
+</button>
+</div>
+`;
+}).join('')}
+</div>
+</div>
+
+<!-- L3: Sound Practice Deck -->
+<div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="p-5 bg-slate-50 border-b border-slate-100">
+<h3 class="text-xs font-black text-slate-500 uppercase tracking-wider">L3: Pronunciation Word Deck</h3>
+<p class="text-[10px] text-slate-400 mt-1">Practice with speech recognition accuracy analysis</p>
+</div>
+<div class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+${DATA.mouthPractice.map((item, idx) => {
+const id = `l3-deck-${idx}`;
+const isRound = item.style === "Round Lips";
+const score = scores[id];
+const isRec = isRecordingId === id;
+return `
+<div class="p-3 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 ${score !== undefined ? 'bg-indigo-50/15 border-indigo-200' : 'bg-white border-slate-200'}">
+<div class="flex items-center justify-between">
+<span class="text-[8px] font-bold px-1.5 py-0.5 rounded-md ${isRound ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}">
+${isRound ? 'Round' : 'Spread'}
+</span>
+<button onclick="playText('${item.word}', 'Staff', '${id}')" class="text-slate-300 hover:text-indigo-600">
+<i class="fa-solid fa-volume-high text-xs"></i>
+</button>
+</div>
+
+<div class="text-center py-1">
+<span class="text-sm font-extrabold text-slate-700 tracking-wide">${isRound ? `*${item.word}` : item.word}</span>
+</div>
+
+<div class="flex flex-col gap-1.5">
+<button onclick="toggleMic('${id}', '${item.word}')"
+class="w-full py-1.5 rounded-xl text-[9px] font-bold transition-all flex items-center justify-center gap-1 ${isRec ? 'mic-active' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-indigo-600'}">
+<i class="fa-solid fa-microphone text-[10px]"></i>
+${isRec ? 'REC' : 'TRY'}
+</button>
+${score !== undefined ? `
+<span class="text-[9px] font-bold text-center text-indigo-600">${score}% Match</span>
+` : ''}
+</div>
+</div>
+`;
+}).join('')}
+</div>
+</div>
+
+</div>
+`;
+
+// --- CONVERSATION PRACTICE RENDER ---
+} else {
+container.innerHTML = `
+<div class="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden mb-12 animate-in">
+
+<div class="p-6 bg-slate-50 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+<div>
+<h2 class="text-lg font-black text-slate-800 italic">Conversation Practice</h2>
+<p class="text-[10px] text-slate-400 mt-1">Practice interactive dialogue using your microphone and review the speech matching score.</p>
+</div>
+<span class="text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 shadow-sm uppercase tracking-widest">
+<i class="fa-solid fa-check-double mr-2"></i> Professional Standard Dialogue
+</span>
+</div>
+
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50/50">
+<th class="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Role</th>
+<th class="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Dialogue Phrase</th>
+<th class="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Interactions</th>
+<th class="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-right">Self Evaluation</th>
+</tr>
+</thead>
+<tbody>
+${DATA.conversation.map((line, idx) => {
+const id = `prac-${idx}`;
+const score = scores[id];
+const transcript = lastTranscripts[id];
+const isRec = isRecordingId === id;
+const isGuest = line.speaker.includes("Guest") || line.speaker.includes("F");
+
+// Highlight text inside parenthesis using Red & normal-weight text
+const formattedPhrase = line.text.replace(/(\([^)]+\))/g, '<span class="text-red-500 font-normal not-italic">$1</span>');
+
+return `
+<tr class="group border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+<!-- Speaker Column -->
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-[9px] font-black px-2.5 py-1 rounded-md uppercase ${isGuest ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}">
+${line.speaker}
+</span>
+</td>
+
+<!-- Text / Phrase Column -->
+<td class="px-6 py-4">
+<p class="text-xs font-bold text-slate-700 italic">"${formattedPhrase}"</p>
+${isRec || score !== undefined ? `
+<div class="mt-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200 animate-in">
+<p class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Recognized Words:</p>
+<p class="text-xs italic text-slate-600 font-medium">"${transcript || 'Awaiting input...'}"</p>
+</div>
+` : ''}
+</td>
+
+<!-- Action Elements -->
+<td class="px-6 py-4">
+<div class="flex items-center justify-center gap-2">
+<!-- Play TTS Voice -->
+<button onclick="playText('${line.text.replace(/'/g, "\\'")}', '${line.speaker}', '${id}')"
+class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-sm transition-all ${isPlayingId === id ? 'text-indigo-600 ring-2 ring-indigo-100' : 'text-slate-400 hover:text-indigo-600'}">
+<i class="fa-solid fa-volume-high text-xs"></i>
+</button>
+
+<!-- Speak Practice Voice Rec -->
+<button onclick="toggleMic('${id}', '${line.text.replace(/'/g, "\\'")}')"
+class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border transition-all text-[9px] font-black ${isRec ? 'mic-active' : 'bg-white border-slate-200 text-slate-400 hover:text-indigo-600'}">
+<i class="fa-solid fa-microphone text-xs"></i>
+${isRec ? 'SUBMIT' : 'PRACTICE'}
+</button>
+</div>
+</td>
+
+<!-- Accuracy Level Tracker -->
+<td class="px-6 py-4 text-right">
+${score !== undefined ? `
+<div class="flex flex-col items-end gap-1.5 animate-in">
+<span class="text-[10px] font-black text-indigo-600">${score}% Match</span>
+<div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+<div class="h-full bg-indigo-500" style="width: ${score}%"></div>
+</div>
+</div>
+` : `
+<span class="text-[9px] font-bold text-slate-300 italic uppercase">READY</span>
+`}
+</td>
+</tr>
+`;
+}).join('')}
+</tbody>
+</table>
+</div>
+</div>
+`;
+}
+}
+
+// First Render invocation
+render();
+</script>
+</body>
+</html>

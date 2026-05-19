@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Boards: Sentence Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Base Styling: Very soft, low contrast, spacious, readable */
+        body { 
+            transition: background-color 0.4s, font-size 0.4s, font-family 0.4s, color 0.4s; 
+            background-color: #f8fafc; 
+            color: #475569; 
+            line-height: 2; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Accessibility Modes */
+        body.mode-reading {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif !important;
+            letter-spacing: 0.2em; 
+            word-spacing: 0.5em; 
+            line-height: 2.5;
+            background-color: #fefce8; 
+            color: #292524; 
+        }
+        body.mode-reading .card-bg { background-color: #fffbeb; }
+
+        body.mode-calm {
+            background-color: #e2e8f0; 
+            color: #334155;
+        }
+        body.mode-calm .game-card, body.mode-calm .rule-box {
+            border: 4px solid #94a3b8; 
+            box-shadow: none !important;
+            border-radius: 0 !important; 
+            background-color: #f1f5f9;
+        }
+        body.mode-calm button {
+            border-radius: 0 !important;
+            border: 3px solid #64748b;
+        }
+
+        body.mode-focus .game-card {
+            opacity: 0.15;
+            transition: opacity 0.4s, filter 0.4s;
+            filter: blur(2px) grayscale(50%);
+            pointer-events: none;
+        }
+        body.mode-focus .game-card.active-focus {
+            opacity: 1;
+            filter: none;
+            pointer-events: auto;
+            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85); 
+            position: relative;
+            z-index: 50;
+        }
+
+        /* Font Overrides */
+        body.font-sans { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body.font-serif { font-family: 'Georgia', 'Times New Roman', serif; }
+        body.font-dyslexic { font-family: 'Comic Sans MS', cursive, sans-serif; letter-spacing: 0.15em; }
+
+        /* Metalanguage Tooltip */
+        .meta-hover {
+            position: relative;
+            border-bottom: 3px dotted #94a3b8;
+            cursor: help;
+            color: #334155;
+            font-weight: 800;
+            padding-bottom: 2px;
+            transition: border-color 0.2s;
+            background-color: #f1f5f9;
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+        .meta-hover:hover { border-color: #3b82f6; background-color: #e0f2fe; }
+        
+        .meta-tooltip {
+            position: absolute;
+            bottom: 140%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1e293b;
+            color: #f8fafc;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, bottom 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 100;
+            letter-spacing: normal;
+            font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .meta-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        .meta-hover:hover .meta-tooltip {
+            opacity: 1;
+            visibility: visible;
+            bottom: 120%;
+        }
+
+        /* Components */
+        .game-card {
+            background-color: white;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+        .rule-box {
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+        }
+        .blank-space {
+            display: inline-block;
+            min-width: 100px;
+            height: 48px;
+            border-bottom: 4px solid #94a3b8;
+            text-align: center;
+            color: #475569;
+            font-weight: bold;
+            padding: 0 16px;
+            transition: border-color 0.3s;
+        }
+
+        /* Animations */
+        @keyframes pop-in {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in { animation: pop-in 0.3s ease-out forwards; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+        
+        @keyframes flash-red {
+            0% { background-color: white; }
+            50% { background-color: #fee2e2; color: #b91c1c; transform: scale(1.05); }
+            100% { background-color: #fef2f2; color: #dc2626; }
+        }
+        .animate-flash-red { animation: flash-red 0.8s ease-out forwards; }
+
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-bounce-gentle { animation: bounce-gentle 1.5s infinite ease-in-out; }
+
+        /* Streak Bar */
+        .streak-container {
+            width: 100%;
+            height: 12px;
+            background-color: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .streak-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #16a34a, #f97316, #2563eb);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Note Paper Style */
+        .note-paper {
+            background-color: #fef9c3;
+            background-image: linear-gradient(#fde047 1px, transparent 1px);
+            background-size: 100% 2rem;
+            border-left: 4px solid #ef4444;
+            padding: 1rem 2rem 2rem 2rem;
+            border-radius: 4px;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.05);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+            text-align: left;
+        }
+
+        /* Nav Buttons */
+        .nav-btn {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            border: 2px solid #cbd5e1;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover:not(:disabled) { background-color: #e2e8f0; color: #334155; border-color: #94a3b8; }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    </style>
+</head>
+<body class="pb-32 text-lg">
+
+    <!-- Top Accessibility Bar -->
+    <div class="fixed top-0 left-0 w-full bg-white shadow-sm z-[100] border-b border-slate-200 p-3 md:p-5 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-6 flex-wrap">
+            <span class="font-bold text-slate-500 text-xl flex flex-col leading-tight">
+                <span>⚙️ 設定 Options</span>
+            </span>
+            
+            <div class="flex flex-col">
+                <label class="text-xs text-slate-400 font-bold tracking-wider mb-1">我的學習需要 MY NEEDS</label>
+                <select id="access-select" class="p-3 border-2 border-slate-200 rounded-xl cursor-pointer bg-slate-50 font-medium text-slate-600 focus:border-blue-400 focus:outline-none" onchange="changeAccessibilityMode()">
+                    <option value="none">🌟 標準模式 Standard</option>
+                    <option value="focus">🎯 我無法集中注意力 I can't pay attention</option>
+                    <option value="reading">📖 閱讀對我來說很困難 Reading is hard.</option>
+                    <option value="calm">🧩 我需要清晰的規則和柔和的顏色 Calm colors & rules</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col">
+                <label class="text-xs text-slate-400 font-bold tracking-wider mb-1">字體 FONT</label>
+                <select id="font-select" class="p-3 border-2 border-slate-200 rounded-xl cursor-pointer bg-slate-50 font-medium text-slate-600 focus:border-blue-400 focus:outline-none" onchange="changeFont()">
+                    <option value="font-sans">標準 Sans-Serif</option>
+                    <option value="font-serif">書本體 Serif</option>
+                    <option value="font-dyslexic">易讀體 Easy Read</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div class="flex flex-col items-end mr-3">
+                <span class="font-bold text-slate-500 text-sm">字體大小</span>
+                <span class="text-xs text-slate-400">TEXT SIZE</span>
+            </div>
+            <button onclick="changeFontSize(-1)" class="w-12 h-12 bg-slate-100 rounded-xl font-bold text-2xl text-slate-600 hover:bg-slate-200 border-2 border-slate-200 focus:outline-none">-</button>
+            <button onclick="changeFontSize(1)" class="w-12 h-12 bg-slate-100 rounded-xl font-bold text-2xl text-slate-600 hover:bg-slate-200 border-2 border-slate-200 focus:outline-none">+</button>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="max-w-5xl mx-auto mt-40 px-4 md:px-8">
+        
+        <div class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-600 mb-6 tracking-tight">🔎 電郵句子特訓營</h1>
+            <p class="text-2xl text-slate-400 font-light">Email Sentence Boot Camp</p>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- THE CHEAT SHEET (SCAFFOLDING)              -->
+        <!-- ========================================== -->
+        <div id="scaffold-container" class="game-card active-focus p-8 md:p-14 rounded-3xl mb-12 relative">
+            <div class="flex items-center gap-6 mb-10 border-b-2 pb-8 border-slate-100">
+                <div class="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-3xl font-black shrink-0">📖</div>
+                <div>
+                    <h2 class="text-3xl font-extrabold text-slate-600 mb-2">秘笈：點樣估 Are / Can / Have?</h2>
+                    <p class="text-slate-400 text-xl">Cheat Sheet: How to guess the magic words</p>
+                </div>
+            </div>
+
+            <p class="mb-10 text-slate-500 text-xl leading-loose">
+                唔想溫書？字彙太難睇唔明？唔使驚！我哋教你點樣做小偵探。只要望下啲字的<strong>「形狀」同「車尾（字尾）」</strong>，就可以屈機估中！<br>
+                所有答案都係用嚟接落依句度：<strong class="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-1 rounded">"...because they [魔法字] ______."</strong>
+                <br><span class="text-lg text-slate-400 block mt-2">Too hard to read? Don't worry! Just look at the word shapes and endings to guess correctly!</span>
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- ARE (GREEN) -->
+                <div class="bg-green-50 p-6 rounded-2xl border-t-8 border-green-500 shadow-sm">
+                    <div class="text-green-600 font-black text-3xl mb-2 tracking-wide">ARE</div>
+                    <p class="text-base font-bold text-green-800/60 mb-4">讚緊件貨好正 (Description)</p>
+                    <p class="mb-4 text-slate-600 text-lg leading-relaxed">
+                        如果字尾係：<br>
+                        <strong class="bg-white px-2 py-1 rounded text-green-700">-able / -ible</strong> (e.g. reliable, suitable)<br>
+                        <strong class="bg-white px-2 py-1 rounded text-green-700">-ive</strong> (e.g. interactive, cost-effective)<br>
+                        <strong class="bg-white px-2 py-1 rounded text-green-700">-al / -ful</strong> (e.g. practical, useful)
+                    </p>
+                    <div class="bg-white/80 p-4 rounded-xl border border-green-200">
+                        👉 呢啲係 <span class="meta-hover">形容詞<span class="meta-tooltip">Adjectives: Words that describe things.</span></span>。<br><strong class="text-green-700">請用 ARE。</strong>
+                    </div>
+                </div>
+
+                <!-- HAVE (ORANGE) -->
+                <div class="bg-orange-50 p-6 rounded-2xl border-t-8 border-orange-500 shadow-sm">
+                    <div class="text-orange-600 font-black text-3xl mb-2 tracking-wide">HAVE</div>
+                    <p class="text-base font-bold text-orange-800/60 mb-4">有咩配件/功能 (Things/Ideas)</p>
+                    <p class="mb-4 text-slate-600 text-lg leading-relaxed">
+                        結尾又長又噚氣：<br>
+                        <strong class="bg-white px-2 py-1 rounded text-orange-700">-tion / -ment</strong> (e.g. installation, enhancement)<br>
+                        <strong class="bg-white px-2 py-1 rounded text-orange-700">-ity / -ance</strong> (e.g. durability, disturbance)<br>
+                        或者字尾有 <strong>-s</strong> (e.g. issues, functions)<br>
+                        仲有三大神字：<strong>budget, schedule, lifespan</strong>
+                    </p>
+                    <div class="bg-white/80 p-4 rounded-xl border border-orange-200">
+                        👉 呢啲係件貨自帶嘅 <span class="meta-hover">名詞<span class="meta-tooltip">Nouns: Objects, concepts, or things.</span></span>。<br><strong class="text-orange-700">請用 HAVE。</strong>
+                    </div>
+                </div>
+
+                <!-- CAN (BLUE) -->
+                <div class="bg-blue-50 p-6 rounded-2xl border-t-8 border-blue-500 shadow-sm">
+                    <div class="text-blue-600 font-black text-3xl mb-2 tracking-wide">CAN</div>
+                    <p class="text-base font-bold text-blue-800/60 mb-4">件貨識做咩 (Action)</p>
+                    <p class="mb-4 text-slate-600 text-lg leading-relaxed">
+                        短小精悍，通常喺最頭！冇上面嗰啲古怪字尾。<br><br>
+                        (e.g. draw, enhance, affect, facilitate, avoid, install, require)
+                    </p>
+                    <div class="bg-white/80 p-4 rounded-xl border border-blue-200 mt-10">
+                        👉 我哋統一幫所有 <span class="meta-hover">動詞<span class="meta-tooltip">Verbs: Action words.</span></span> 加幫助字。<br><strong class="text-blue-700">請用 CAN。</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ACTIVITY 1: 50-Question Grinder            -->
+        <!-- ========================================== -->
+        <div id="act1-container" class="game-card p-8 md:p-14 rounded-3xl mb-12 relative">
+            <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-3xl font-black shrink-0">⚔️</div>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-600 mb-2">生存模式：50連殺挑戰！</h2>
+                        <p class="text-slate-400 text-xl">Survival Mode: The 50-Question Grinder</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-4xl font-black text-slate-600" id="streak-counter">0 / 50</div>
+                    <div class="text-sm text-slate-400 font-bold uppercase">目前進度 Progress</div>
+                </div>
+            </div>
+
+            <div class="streak-container">
+                <div class="streak-fill" id="streak-bar"></div>
+            </div>
+
+            <p class="text-slate-500 text-lg mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                要攞高分，就要瘋狂練習！根據上面的秘笈，睇下試卷寫咩，然後估下用邊個魔法字。<br>答啱之後，文字會變色！(<strong class="text-green-600">綠=形容詞</strong>, <strong class="text-orange-500">橙=名詞</strong>, <strong class="text-blue-600">藍=動詞</strong>)<br>
+                <span class="text-sm text-slate-400">Practice makes perfect! Colors will reveal the part of speech after you answer correctly. If you get it wrong, we'll give you a colorful hint to try again!</span>
+            </p>
+
+            <div class="bg-slate-50 p-6 md:p-12 rounded-3xl border border-slate-200 text-center">
+                
+                <div class="note-paper mb-10 max-w-2xl mx-auto text-xl md:text-2xl text-slate-700 leading-loose">
+                    <div class="font-bold">Preference:</div>
+                    <div>
+                        <span id="grinder-board-name">Conventional whiteboards</span> 
+                        <span id="grinder-pref-icon" class="font-sans ml-2">❌</span>
+                    </div>
+                    <div id="grinder-reason-box" class="mt-2 ml-4 font-bold text-2xl md:text-3xl text-slate-800 tracking-tight leading-relaxed">...</div>
+                </div>
+
+                <div class="text-2xl md:text-3xl font-bold mb-12 text-slate-500 flex flex-wrap justify-center items-center gap-4 leading-loose">
+                    <span>...because they</span>
+                    <span id="grinder-blank" class="blank-space"></span>
+                    <span id="grinder-reason-text" class="text-slate-600 bg-white px-4 py-2 rounded-xl border-2 border-slate-200 transition-colors duration-500">...</span>
+                    <span>.</span>
+                </div>
+
+                <!-- Answer Buttons -->
+                <div class="flex flex-wrap justify-center gap-6 mb-8" id="grinder-buttons">
+                    <button onclick="checkGrinder('are')" class="w-32 py-5 bg-white border-4 border-green-200 text-green-600 font-black text-3xl rounded-2xl hover:bg-green-50 hover:border-green-400 transition-all shadow-sm">are</button>
+                    <button onclick="checkGrinder('can')" class="w-32 py-5 bg-white border-4 border-blue-200 text-blue-600 font-black text-3xl rounded-2xl hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm">can</button>
+                    <button onclick="checkGrinder('have')" class="w-32 py-5 bg-white border-4 border-orange-200 text-orange-500 font-black text-3xl rounded-2xl hover:bg-orange-50 hover:border-orange-400 transition-all shadow-sm">have</button>
+                </div>
+
+                <div id="grinder-feedback" class="hidden p-6 rounded-2xl font-bold text-xl text-center mb-8"></div>
+                
+                <!-- Navigation Arrows -->
+                <div class="flex justify-between items-center mt-6 border-t border-slate-200 pt-6">
+                    <button id="grinder-prev" onclick="navGrinder(-1)" class="nav-btn flex items-center gap-2" disabled>
+                        <span>⬅</span> 上一題 Prev
+                    </button>
+                    <button id="grinder-next" onclick="navGrinder(1)" class="nav-btn flex items-center gap-2" disabled>
+                        下一題 Next <span>➔</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ACTIVITY 2: 10 Boss Fights (Exceptions)    -->
+        <!-- ========================================== -->
+        <div id="act2-container" class="game-card p-8 md:p-14 rounded-3xl mb-12 relative">
+            <div class="flex items-center gap-6 mb-10 border-b-2 pb-8 border-slate-100">
+                <div class="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-3xl font-black shrink-0">👾</div>
+                <div>
+                    <h2 class="text-3xl font-extrabold text-slate-600 mb-2">打小大佬：10個地獄級伏位！</h2>
+                    <p class="text-slate-400 text-xl">Mini Bosses: 10 Unexpected Traps</p>
+                </div>
+            </div>
+
+            <p class="mb-10 text-slate-500 text-xl leading-loose">
+                英文點會咁簡單！總有啲字唔跟規矩，或者特登跣你。遇到呢啲「小大佬」，記住以下嘅拆解秘訣！
+                <br><span class="text-lg text-slate-400 block mt-2">English always has exceptions! When you see these "Bosses", remember these tricks!</span>
+            </p>
+
+            <div class="grid gap-6 mb-10">
+                <div class="bg-white border-2 border-purple-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-center">
+                    <div class="bg-purple-100 text-purple-700 font-black text-xl px-4 py-2 rounded-xl text-center">Boss 1<br><span class="text-sm font-normal">(-ing)</span></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl text-slate-700 mb-2">The "-ing" 偽裝者 (The Imposter)</p>
+                        <p class="text-slate-500">e.g., <strong class="text-purple-600">engaging</strong>, <strong class="text-purple-600">confusing</strong>, <strong class="text-purple-600">distracting</strong>. <br>雖然有 -ing，但喺度係形容詞！👉 <strong>破解法：一律用 ARE！</strong> (They are engaging)</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border-2 border-purple-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-center">
+                    <div class="bg-purple-100 text-purple-700 font-black text-xl px-4 py-2 rounded-xl text-center">Boss 2<br><span class="text-sm font-normal">(NO)</span></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl text-slate-700 mb-2">"NO" 陷阱 (The Sneaky 'No')</p>
+                        <p class="text-slate-500">e.g., <strong class="text-purple-600">no multimedia functions</strong>, <strong class="text-purple-600">no technical issues</strong>. <br>👉 <strong>破解法：照樣用 HAVE！</strong> "They have no functions" = 佢哋冇呢個功能。</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border-2 border-purple-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-center">
+                    <div class="bg-purple-100 text-purple-700 font-black text-xl px-4 py-2 rounded-xl text-center">Boss 3<br><span class="text-sm font-normal">(FOR)</span></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl text-slate-700 mb-2">FOR 字頭 (The Preposition Start)</p>
+                        <p class="text-slate-500">e.g., <strong class="text-purple-600">for everyday classes</strong>, <strong class="text-purple-600">for school use</strong>. <br>👉 <strong>破解法：見到 for 喺最前，一律加 ARE！</strong> (They are for everyday classes).</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white border-2 border-purple-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-center">
+                    <div class="bg-purple-100 text-purple-700 font-black text-xl px-4 py-2 rounded-xl text-center">Boss 4<br><span class="text-sm font-normal">(-ed 形容詞)</span></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl text-slate-700 mb-2">The "-ed" 形容詞 (State, not action)</p>
+                        <p class="text-slate-500">e.g., <strong class="text-purple-600">limited in features</strong>, <strong class="text-purple-600">complicated</strong>. <br>👉 <strong>破解法：如果佢係形容緊件貨好差/好難，都係用 ARE！</strong> (They are limited in features).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boss Fight Quiz -->
+            <div class="bg-slate-50 p-8 md:p-12 rounded-3xl border border-slate-200 text-center">
+                <div class="flex justify-between items-center mb-8">
+                    <span class="bg-purple-200 text-purple-800 font-bold px-4 py-1 rounded-full text-sm tracking-widest uppercase">挑戰 Boss Fight</span>
+                    <span class="text-purple-600 font-black text-2xl"><span id="boss-qnum">1</span> / 10</span>
+                </div>
+                
+                <div class="note-paper mb-10 max-w-2xl mx-auto text-xl md:text-2xl text-slate-700 leading-loose">
+                    <div class="font-bold">Preference:</div>
+                    <div>
+                        <span id="boss-board-name">Board Type</span> 
+                        <span id="boss-pref-icon" class="font-sans ml-2">❓</span>
+                    </div>
+                    <div id="boss-reason-box" class="mt-2 ml-4 font-bold text-2xl md:text-3xl text-purple-800 tracking-tight leading-relaxed">...</div>
+                </div>
+
+                <div class="text-2xl md:text-3xl font-bold mb-12 text-slate-500 flex flex-wrap justify-center items-center gap-4 leading-loose">
+                    <span>...because they</span>
+                    <span id="boss-blank" class="blank-space"></span>
+                    <span id="boss-reason-text" class="text-slate-600 bg-white px-4 py-2 rounded-xl border-2 border-slate-200">...</span>
+                    <span>.</span>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-4 mb-8" id="boss-buttons">
+                    <!-- Dynamic buttons injected here -->
+                </div>
+
+                <div id="boss-feedback" class="hidden p-6 rounded-2xl font-bold text-xl text-center mb-8"></div>
+                
+                <!-- Navigation Arrows -->
+                <div class="flex justify-between items-center mt-6 border-t border-slate-200 pt-6">
+                    <button id="boss-prev" onclick="navBoss(-1)" class="nav-btn flex items-center gap-2" disabled>
+                        <span>⬅</span> 上一題 Prev
+                    </button>
+                    <button id="boss-next" onclick="navBoss(1)" class="nav-btn flex items-center gap-2" disabled>
+                        下一題 Next <span>➔</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ACTIVITY 3: THE ULTIMATE BOSS (-ED DETECTIVE) -->
+        <!-- ========================================== -->
+        <div id="act3-container" class="game-card p-8 md:p-14 rounded-3xl mb-12 relative border-4 border-amber-300 shadow-xl shadow-amber-100">
+            <div class="flex items-center gap-6 mb-10 border-b-2 pb-8 border-amber-100">
+                <div class="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-2xl flex items-center justify-center text-3xl font-black shrink-0 shadow-lg animate-pulse">👑</div>
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-amber-600 mb-2">終極大佬：-ed 大偵探 (被動語態)</h2>
+                    <p class="text-amber-500/80 text-xl font-bold">The Ultimate Boss: The -ed Detective (Passive Voice)</p>
+                </div>
+            </div>
+            
+            <!-- VISUAL INTRO STAGE -->
+            <div id="uboss-intro-stage" class="bg-slate-800 rounded-3xl p-8 md:p-16 text-center text-white mb-12 shadow-inner overflow-hidden relative">
+                <div id="uboss-step-1" class="transition-all duration-700 transform scale-100">
+                    <p class="text-slate-400 mb-4 font-bold tracking-widest uppercase">Preference 原因框寫住:</p>
+                    <div class="space-y-6">
+                        <p class="text-3xl md:text-5xl font-mono font-bold text-white tracking-wide">normal classes disturbed</p>
+                        <p class="text-2xl md:text-4xl font-mono font-bold text-slate-300 tracking-wide">the delivery affected before the class</p>
+                    </div>
+                    <button onclick="playUbossIntro(2)" class="mt-12 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold text-xl transition-all shadow-lg shadow-blue-900/50">睇真啲 Look Closer ➔</button>
+                </div>
+                
+                <div id="uboss-step-2" class="hidden transition-all duration-700">
+                    <p class="text-slate-400 mb-4 font-bold tracking-widest uppercase">等等，咩話？！ Wait, what?!</p>
+                    <div class="space-y-8">
+                        <p class="text-3xl md:text-5xl font-mono font-bold text-slate-300 tracking-wide leading-relaxed">
+                            normal classes <span class="bg-red-500 text-white px-3 py-1 rounded-xl shadow-lg shadow-red-500/50 animate-pulse inline-block transform scale-110 -rotate-2">disturbed</span>
+                        </p>
+                        <p class="text-2xl md:text-4xl font-mono font-bold text-slate-400 tracking-wide leading-relaxed">
+                            the delivery <span class="bg-red-500 text-white px-3 py-1 rounded-xl shadow-lg shadow-red-500/50 animate-pulse inline-block transform scale-110 rotate-2">affected</span> 
+                            <span class="text-amber-400 border-b-4 border-amber-400 ml-2 animate-pulse">before</span> the class
+                        </p>
+                    </div>
+                    <p class="text-2xl text-red-400 mt-10 font-black animate-bounce-gentle">🚨 點解有個 -ed 喺中間？！ 🚨</p>
+                    <button onclick="playUbossIntro(3)" class="mt-8 bg-amber-500 hover:bg-amber-400 text-white px-8 py-3 rounded-full font-bold text-xl transition-all shadow-lg shadow-amber-900/50">點算好？ How to defeat it? ➔</button>
+                </div>
+            </div>
+
+            <!-- EXPLANATION STAGE (Hidden initially) -->
+            <div id="uboss-explanation" class="hidden animate-pop-in">
+                <p class="mb-8 text-slate-600 text-xl leading-loose font-medium">
+                    最高危警告！🚨 當你見到試卷上嘅字有 <strong class="text-red-600 bg-red-50 px-2 py-1 rounded">-ed</strong> 結尾，呢個係終極大佬嘅信號！<br>
+                    代表我哋唔可以再用 "because they..." 喇，我哋要用 <span class="meta-hover">被動語態<span class="meta-tooltip">Passive Voice: when the subject receives the action.</span></span>。你必須<strong>改變主角</strong>！
+                </p>
+
+                <div class="bg-amber-50 rounded-3xl p-8 mb-12 border border-amber-200 shadow-sm">
+                    <h3 class="text-2xl font-bold text-amber-700 mb-6 flex items-center gap-2">
+                        🔍 點樣拆解大佬？ How to defeat it?
+                    </h3>
+                    
+                    <!-- Visual Breakdown Box -->
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 flex-wrap text-lg md:text-xl font-bold bg-white p-6 rounded-2xl shadow-sm mb-8 border-2 border-slate-100">
+                        <div class="bg-indigo-100 text-indigo-700 px-4 py-3 rounded-xl flex flex-col items-center">
+                            <span class="mb-1">normal classes</span>
+                            <span class="text-xs font-bold text-indigo-500 uppercase tracking-widest">(1) 新主角 New Subject!</span>
+                        </div>
+                        
+                        <div class="text-slate-300 text-3xl font-black">➡</div>
+                        
+                        <div class="bg-amber-100 text-amber-700 px-6 py-3 rounded-xl border-4 border-dashed border-amber-400 flex flex-col items-center relative animate-pulse shadow-sm">
+                            <span class="text-2xl mb-1">is? are? was? were?</span>
+                            <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">(2) 幫助詞 Helper Needed!</span>
+                        </div>
+                        
+                        <div class="text-slate-300 text-3xl font-black">➡</div>
+                        
+                        <div class="bg-red-100 text-red-700 px-4 py-3 rounded-xl flex flex-col items-center shadow-sm">
+                            <span class="mb-1">disturbed</span>
+                            <span class="text-xs font-bold text-red-500 uppercase tracking-widest">(3) 受傷的 -ed verb</span>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <div class="text-3xl mb-2">☝️</div>
+                            <div class="font-black text-slate-700 mb-1">IS</div>
+                            <div class="text-sm text-slate-500">主角只有 1 個<br><span class="text-xs">(Single item)</span></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <div class="text-3xl mb-2">👯</div>
+                            <div class="font-black text-slate-700 mb-1">ARE</div>
+                            <div class="text-sm text-slate-500">主角有很多個 (有s)<br><span class="text-xs">(Plural / many)</span></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm border-b-4 border-amber-400">
+                            <div class="text-3xl mb-2">⏳</div>
+                            <div class="font-black text-slate-700 mb-1">WAS / WERE</div>
+                            <div class="text-sm text-slate-500">有過去時間 e.g. <strong class="text-amber-500">yesterday, before...</strong><br><span class="text-xs">(Past tense)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ultimate Boss Fight Quiz -->
+                <div class="bg-white p-6 md:p-12 rounded-3xl border border-slate-200 text-center shadow-sm">
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="bg-amber-100 text-amber-800 font-bold px-4 py-1 rounded-full text-sm tracking-widest uppercase border border-amber-200">終極實戰 Final Battle</span>
+                        <span class="text-amber-500 font-black text-2xl"><span id="uboss-qnum">1</span> / 20</span>
+                    </div>
+                    
+                    <div class="note-paper mb-10 max-w-2xl mx-auto text-xl md:text-2xl text-slate-700 leading-loose">
+                        <div class="font-bold">Preference:</div>
+                        <div>
+                            <span id="uboss-board-name">Board Type</span> 
+                            <span id="uboss-pref-icon" class="font-sans ml-2">❓</span>
+                        </div>
+                        <div id="uboss-reason-box" class="mt-2 ml-4 font-mono font-bold text-2xl md:text-3xl text-slate-800 tracking-tight leading-relaxed">...</div>
+                    </div>
+
+                    <div class="text-2xl md:text-3xl font-bold mb-12 text-slate-500 flex flex-wrap justify-center items-center gap-4 md:gap-6 leading-loose bg-amber-50/50 p-6 rounded-2xl border border-amber-100">
+                        <span>...because</span>
+                        <span id="uboss-subject" class="text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-200 shadow-sm">...</span>
+                        <span id="uboss-blank" class="blank-space border-amber-400 text-amber-600"></span>
+                        <span id="uboss-edword" class="text-red-600 bg-red-50 px-4 py-2 rounded-xl border border-red-200 shadow-sm">...</span>
+                        <span id="uboss-rest" class="text-slate-400 text-xl font-normal hidden md:inline-block">...</span>
+                    </div>
+
+                    <div class="flex flex-wrap justify-center gap-4 md:gap-6 mb-8" id="uboss-buttons">
+                        <button onclick="checkUltimateBoss('is')" class="w-24 py-4 bg-white border-4 border-slate-200 text-slate-600 font-black text-2xl rounded-2xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm">is</button>
+                        <button onclick="checkUltimateBoss('are')" class="w-24 py-4 bg-white border-4 border-slate-200 text-slate-600 font-black text-2xl rounded-2xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm">are</button>
+                        <button onclick="checkUltimateBoss('was')" class="w-24 py-4 bg-white border-4 border-slate-200 text-slate-600 font-black text-2xl rounded-2xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm">was</button>
+                        <button onclick="checkUltimateBoss('were')" class="w-24 py-4 bg-white border-4 border-slate-200 text-slate-600 font-black text-2xl rounded-2xl hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm">were</button>
+                    </div>
+
+                    <div id="uboss-feedback" class="hidden p-6 rounded-2xl font-bold text-xl text-center mb-8"></div>
+                    
+                    <!-- Navigation Arrows -->
+                    <div class="flex justify-between items-center mt-6 border-t border-slate-200 pt-6">
+                        <button id="uboss-prev" onclick="navUBoss(-1)" class="nav-btn flex items-center gap-2" disabled>
+                            <span>⬅</span> 上一題 Prev
+                        </button>
+                        <button id="uboss-next" onclick="navUBoss(1)" class="nav-btn flex items-center gap-2" disabled>
+                            下一題 Next <span>➔</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // --- Accessibility Logic ---
+        let baseSize = 18; 
+        function changeAccessibilityMode() {
+            const mode = document.getElementById('access-select').value;
+            const body = document.body;
+            body.classList.remove('mode-reading', 'mode-calm', 'mode-focus');
+            if (mode !== 'none') body.classList.add(`mode-${mode}`);
+            
+            // Remove active-focus from all
+            document.querySelectorAll('.game-card').forEach(card => card.classList.remove('active-focus'));
+            
+            // If focus mode, set first container as active
+            if (mode === 'focus') updateFocus(document.getElementById('scaffold-container'));
+        }
+        function changeFont() {
+            const font = document.getElementById('font-select').value;
+            const body = document.body;
+            body.classList.remove('font-sans', 'font-serif', 'font-dyslexic');
+            body.classList.add(font);
+        }
+        function changeFontSize(change) {
+            baseSize += (change * 2);
+            if (baseSize < 14) baseSize = 14;
+            if (baseSize > 36) baseSize = 36;
+            document.body.style.fontSize = `${baseSize}px`;
+        }
+        function updateFocus(activeElement) {
+            if (document.body.classList.contains('mode-focus')) {
+                document.querySelectorAll('.game-card').forEach(card => card.classList.remove('active-focus'));
+                activeElement.classList.add('active-focus');
+            }
+        }
+        
+        // Add click listeners to sections for Focus mode
+        document.getElementById('scaffold-container').addEventListener('click', function() { updateFocus(this); });
+        document.getElementById('act1-container').addEventListener('click', function() { updateFocus(this); });
+        document.getElementById('act2-container').addEventListener('click', function() { updateFocus(this); });
+        document.getElementById('act3-container').addEventListener('click', function() { updateFocus(this); });
+
+        // Helpers
+        const randomBoard = () => ['Conventional whiteboards', 'Interactive boards'][Math.floor(Math.random() * 2)];
+
+        // ==========================================
+        // ACTIVITY 1: 50-QUESTION GRINDER
+        // ==========================================
+        const vocabData = [
+            // ARE (Adjectives) GREEN
+            { r: "highly reliable", t: "are", w: "reliable", c: "green", s: "pos", ex: "reliable 結尾係 -able", zh: "因為它們非常可靠" },
+            { r: "very durable", t: "are", w: "durable", c: "green", s: "pos", ex: "durable 結尾係 -able", zh: "因為它們非常耐用" },
+            { r: "acceptable for school", t: "are", w: "acceptable", c: "green", s: "pos", ex: "acceptable 結尾係 -able", zh: "因為它們適合學校使用" },
+            { r: "highly suitable", t: "are", w: "suitable", c: "green", s: "pos", ex: "suitable 結尾係 -able", zh: "因為它們非常適合" },
+            { r: "cost-effective", t: "are", w: "cost-effective", c: "green", s: "pos", ex: "cost-effective 結尾係 -ive", zh: "因為它們具成本效益（抵用）" },
+            { r: "interactive", t: "are", w: "interactive", c: "green", s: "pos", ex: "interactive 結尾係 -ive", zh: "因為它們具互動性" },
+            { r: "very practical", t: "are", w: "practical", c: "green", s: "pos", ex: "practical 結尾係 -al", zh: "因為它們非常實用" },
+            { r: "conventional", t: "are", w: "conventional", c: "green", s: "pos", ex: "conventional 結尾係 -al", zh: "因為它們是傳統的" },
+            { r: "highly technical", t: "are", w: "technical", c: "green", s: "pos", ex: "technical 結尾係 -al", zh: "因為它們極具技術性" },
+            { r: "very useful", t: "are", w: "useful", c: "green", s: "pos", ex: "useful 結尾係 -ful", zh: "因為它們非常有用" },
+            { r: "reliable during lessons", t: "are", w: "reliable", c: "green", s: "pos", ex: "reliable 結尾係 -able", zh: "因為它們在課堂上很可靠" },
+            { r: "suitable for teachers", t: "are", w: "suitable", c: "green", s: "pos", ex: "suitable 結尾係 -able", zh: "因為它們適合老師使用" },
+            { r: "practical for everyday use", t: "are", w: "practical", c: "green", s: "pos", ex: "practical 結尾係 -al", zh: "因為它們適合日常使用" },
+            { r: "limited in features", t: "are", w: "limited", c: "green", s: "neg", ex: "limited 喺度當形容詞 (受限制的)", zh: "因為它們的功能有限" }, 
+
+            // HAVE (Nouns) ORANGE
+            { r: "multimedia functions", t: "have", w: "functions", c: "orange", s: "pos", ex: "functions 係名詞，字尾有 s", zh: "因為它們有多媒體功能" },
+            { r: "a long lifespan", t: "have", w: "lifespan", c: "orange", s: "pos", ex: "lifespan (壽命) 係三大必背名詞", zh: "因為它們壽命很長" },
+            { r: "a high budget requirement", t: "have", w: "requirement", c: "orange", s: "neg", ex: "requirement 結尾係 -ment", zh: "因為它們有很高的預算要求" },
+            { r: "clear guidelines", t: "have", w: "guidelines", c: "orange", s: "pos", ex: "guidelines 係名詞，字尾有 s", zh: "因為它們有清晰的指引" },
+            { r: "technical issues", t: "have", w: "issues", c: "orange", s: "neg", ex: "issues 係名詞，字尾有 s", zh: "因為它們有技術問題" },
+            { r: "excellent durability", t: "have", w: "durability", c: "orange", s: "pos", ex: "durability 結尾係 -ity", zh: "因為它們有極佳的耐用度" },
+            { r: "high reliability", t: "have", w: "reliability", c: "orange", s: "pos", ex: "reliability 結尾係 -ity", zh: "因為它們有很高的可靠性" },
+            { r: "no potential disturbance", t: "have", w: "disturbance", c: "orange", s: "pos", ex: "disturbance 結尾係 -ance", zh: "因為它們沒有潛在的干擾" },
+            { r: "good teaching effectiveness", t: "have", w: "effectiveness", c: "orange", s: "pos", ex: "effectiveness 結尾係 -ness", zh: "因為它們有良好的教學效能" },
+            { r: "student engagement tools", t: "have", w: "tools", c: "orange", s: "pos", ex: "tools 係名詞，字尾有 s", zh: "因為它們有吸引學生的工具" },
+            { r: "a quick delivery schedule", t: "have", w: "schedule", c: "orange", s: "pos", ex: "schedule 係三大必背名詞", zh: "因為它們有快速的送貨時間表" },
+            { r: "useful functions", t: "have", w: "functions", c: "orange", s: "pos", ex: "functions 係名詞，字尾有 s", zh: "因為它們有用的功能" },
+            { r: "clear measurements", t: "have", w: "measurements", c: "orange", s: "pos", ex: "measurements 結尾有 -ment 同 s", zh: "因為它們有清晰的尺寸" },
+            { r: "a demonstration mode", t: "have", w: "mode", c: "orange", s: "pos", ex: "mode 係黑板自帶嘅模式 (名詞)", zh: "因為它們有示範模式" },
+
+            // CAN (Verbs) BLUE
+            { r: "draw students' attention", t: "can", w: "draw", c: "blue", s: "pos", ex: "draw 係短短地嘅動作字 (吸引)", zh: "因為它們能吸引學生的注意力" },
+            { r: "enhance learning", t: "can", w: "enhance", c: "blue", s: "pos", ex: "enhance 係動作 (提升)", zh: "因為它們能提升學習" },
+            { r: "facilitate interaction", t: "can", w: "facilitate", c: "blue", s: "pos", ex: "facilitate 係動作 (促進)", zh: "因為它們能促進互動" },
+            { r: "avoid disturbance", t: "can", w: "avoid", c: "blue", s: "pos", ex: "avoid 係動作 (避免)", zh: "因為它們能避免干擾" },
+            { r: "attract students", t: "can", w: "attract", c: "blue", s: "pos", ex: "attract 係動作 (吸引)", zh: "因為它們能吸引學生" },
+            { r: "affect the budget", t: "can", w: "affect", c: "blue", s: "neg", ex: "affect 係動作 (影響)", zh: "因為它們會影響預算" },
+            { r: "allow multimedia", t: "can", w: "allow", c: "blue", s: "pos", ex: "allow 係動作 (允許)", zh: "因為它們允許使用多媒體" },
+            { r: "require a high budget", t: "can", w: "require", c: "blue", s: "neg", ex: "require 係動作 (需要)", zh: "因為它們需要很高的預算" },
+            { r: "disturb classes", t: "can", w: "disturb", c: "blue", s: "neg", ex: "disturb 係動作 (打擾)", zh: "因為它們會打擾課堂" },
+            { r: "engage students", t: "can", w: "engage", c: "blue", s: "pos", ex: "engage 係動作 (參與)", zh: "因為它們能讓學生投入" },
+            { r: "cause technical issues", t: "can", w: "cause", c: "blue", s: "neg", ex: "cause 係動作 (導致)", zh: "因為它們會導致技術問題" },
+            { r: "improve teaching effectiveness", t: "can", w: "improve", c: "blue", s: "pos", ex: "improve 係動作 (改善)", zh: "因為它們能改善教學效能" },
+            { r: "interrupt the lesson", t: "can", w: "interrupt", c: "blue", s: "neg", ex: "interrupt 係動作 (打斷)", zh: "因為它們會打斷課堂" },
+            { r: "provide multimedia functions", t: "can", w: "provide", c: "blue", s: "pos", ex: "provide 係動作 (提供)", zh: "因為它們能提供多媒體功能" }
+        ];
+
+        let grinderQueue = [];
+        let grinderHistory = []; 
+        let currentGrinder = 0;
+        let maxGrinderReached = 0;
+
+        function initGrinder() {
+            let pool = [...vocabData];
+            while (pool.length < 50) pool.push(vocabData[Math.floor(Math.random() * vocabData.length)]);
+            pool.sort(() => Math.random() - 0.5);
+            grinderQueue = pool.slice(0, 50).map(q => ({
+                ...q, 
+                board: randomBoard(), 
+                pref: q.s === 'pos' ? '✅' : '❌' 
+            }));
+        }
+
+        function loadGrinder() {
+            if (currentGrinder >= 50) {
+                document.getElementById('grinder-board-name').innerText = "🏆 挑戰完成！";
+                document.getElementById('grinder-pref-icon').innerText = "";
+                document.getElementById('grinder-reason-box').innerText = "Survived the boot camp!";
+                document.getElementById('grinder-reason-text').innerText = "survived the boot camp";
+                document.getElementById('grinder-blank').innerText = "have";
+                document.getElementById('grinder-blank').style.borderColor = "#10b981";
+                document.getElementById('grinder-blank').className = "blank-space text-green-500";
+                document.getElementById('grinder-buttons').innerHTML = "";
+                document.getElementById('grinder-feedback').innerHTML = "<span class='text-2xl font-black text-green-600'>超強！你已經熟習晒所有規則啦！<br>You are a Master now!</span>";
+                document.getElementById('grinder-feedback').className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-green-50";
+                document.getElementById('grinder-feedback').classList.remove('hidden');
+                document.getElementById('grinder-next').disabled = true;
+                triggerReward(true);
+                return;
+            }
+
+            const q = grinderQueue[currentGrinder];
+            document.getElementById('streak-counter').innerText = `${currentGrinder + 1} / 50`;
+            document.getElementById('streak-bar').style.width = `${((currentGrinder) / 50) * 100}%`;
+            
+            document.getElementById('grinder-board-name').innerText = q.board;
+            document.getElementById('grinder-pref-icon').innerText = q.pref;
+            document.getElementById('grinder-reason-box').innerText = q.r;
+            
+            const blank = document.getElementById('grinder-blank');
+            const feedback = document.getElementById('grinder-feedback');
+            const reasonText = document.getElementById('grinder-reason-text');
+            const btns = document.getElementById('grinder-buttons');
+
+            document.getElementById('grinder-prev').disabled = (currentGrinder === 0);
+            document.getElementById('grinder-next').disabled = (currentGrinder >= maxGrinderReached);
+
+            if (grinderHistory[currentGrinder] && grinderHistory[currentGrinder].correct) {
+                const h = grinderHistory[currentGrinder];
+                blank.innerText = h.ans;
+                btns.classList.add('hidden');
+                feedback.classList.remove('hidden');
+
+                blank.style.borderColor = "#10b981";
+                blank.className = `blank-space text-green-500`;
+                feedback.innerHTML = `<span class="text-green-600 font-bold">✅啱！${q.ex}</span>
+                <div class="mt-3 p-3 bg-white/60 rounded-lg text-slate-700 font-bold border-l-4 border-emerald-500 shadow-sm">💡 意思: ${q.zh}</div>`;
+                feedback.className = "p-4 rounded-xl font-bold text-lg text-left mb-4 bg-green-50 border-2 border-green-200";
+                
+                let highlightClass = q.c === 'green' ? 'text-green-600 font-black bg-green-50 px-1 rounded border-b-2 border-green-200' :
+                                     q.c === 'orange' ? 'text-orange-500 font-black bg-orange-50 px-1 rounded border-b-2 border-orange-200' :
+                                     'text-blue-600 font-black bg-blue-50 px-1 rounded border-b-2 border-blue-200';
+                reasonText.innerHTML = q.r.replace(q.w, `<span class="${highlightClass}">${q.w}</span>`);
+                
+            } else {
+                blank.innerText = "";
+                blank.style.borderColor = "#94a3b8";
+                blank.className = "blank-space";
+                reasonText.innerHTML = q.r;
+                btns.classList.remove('hidden');
+                feedback.classList.add('hidden');
+            }
+        }
+
+        function checkGrinder(ans) {
+            const q = grinderQueue[currentGrinder];
+            const correct = (ans === q.t);
+            
+            if (correct) {
+                grinderHistory[currentGrinder] = { ans, correct }; 
+                if(currentGrinder % 5 === 4) triggerReward(false);
+                if (currentGrinder === maxGrinderReached) {
+                    maxGrinderReached++;
+                }
+                
+                loadGrinder();
+                // Auto advance slightly if correct
+                if(currentGrinder === maxGrinderReached - 1) {
+                     setTimeout(() => navGrinder(1), 2000);
+                }
+            } else {
+                document.getElementById('act1-container').classList.add('animate-flash-red');
+                setTimeout(() => document.getElementById('act1-container').classList.remove('animate-flash-red'), 800);
+                
+                const blank = document.getElementById('grinder-blank');
+                const feedback = document.getElementById('grinder-feedback');
+                const reasonText = document.getElementById('grinder-reason-text');
+                
+                blank.innerText = "❌";
+                blank.style.borderColor = "#f43f5e";
+                blank.className = `blank-space text-red-500`;
+                
+                let highlightClass = q.c === 'green' ? 'text-green-600 font-black bg-green-50 px-1 rounded border-b-2 border-green-200' :
+                                     q.c === 'orange' ? 'text-orange-500 font-black bg-orange-50 px-1 rounded border-b-2 border-orange-200' :
+                                     'text-blue-600 font-black bg-blue-50 px-1 rounded border-b-2 border-blue-200';
+                reasonText.innerHTML = q.r.replace(q.w, `<span class="${highlightClass}">${q.w}</span>`);
+                
+                let hintMsg = q.c === 'green' ? "<span class='text-green-600 font-black'>綠色 (Green)</span> 代表形容詞 (Description)！應該用咩字呢？" :
+                              q.c === 'orange' ? "<span class='text-orange-500 font-black'>橙色 (Orange)</span> 代表名詞 (Thing/Idea)！應該用咩字呢？" :
+                              "<span class='text-blue-600 font-black'>藍色 (Blue)</span> 代表動詞 (Action)！應該用咩字呢？";
+                
+                feedback.innerHTML = `<span class="text-red-600 font-bold text-xl">❌錯咗！試下睇顏色提示：</span><br><span class="text-slate-600 mt-2 block leading-relaxed">${hintMsg}</span>`;
+                feedback.className = "p-6 rounded-2xl font-bold text-lg text-center mb-4 bg-red-50 border-2 border-red-200 shadow-sm";
+                feedback.classList.remove('hidden');
+
+                setTimeout(() => {
+                    blank.innerText = "";
+                    blank.style.borderColor = "#94a3b8";
+                    blank.className = "blank-space";
+                }, 1500);
+            }
+        }
+
+        function navGrinder(dir) {
+            currentGrinder += dir;
+            loadGrinder();
+        }
+
+        // ==========================================
+        // ACTIVITY 2: 10 MINI BOSSES (EXCEPTIONS)
+        // ==========================================
+        
+        const miniBossData = [
+            { r: "engaging", btns: ['are', 'can'], ans: 'are', s: 'pos', ex: "engaging 雖然有 -ing，但喺度係形容詞 (吸引的)！", zh: "因為它們很吸引" },
+            { r: "no multimedia functions", btns: ['are', 'have'], ans: 'have', s: 'neg', ex: "見到 no + 名詞，照用 HAVE！ (They have no functions)", zh: "因為它們沒有多媒體功能" },
+            { r: "for everyday classes", btns: ['are', 'can', 'have'], ans: 'are', s: 'pos', ex: "for (為咗...) 開頭嘅，一律加 ARE！", zh: "因為它們是給日常課堂用的" },
+            { r: "limited in features", btns: ['are', 'have'], ans: 'are', s: 'neg', ex: "limited 喺度係形容緊件貨 (受限制的)，所以用 ARE。", zh: "因為它們的功能有限" },
+            { r: "demanding", btns: ['are', 'can'], ans: 'are', s: 'neg', ex: "demanding 係 -ing 形容詞 (要求高的)，用 ARE。", zh: "因為它們要求很高" },
+            { r: "no potential disturbance", btns: ['have', 'can'], ans: 'have', s: 'pos', ex: "no + 名詞 (disturbance)，用 HAVE。", zh: "因為它們沒有潛在干擾" },
+            { r: "for the installation", btns: ['are', 'have'], ans: 'are', s: 'pos', ex: "for 字頭，用 ARE。", zh: "因為它們是為了安裝的" },
+            { r: "confusing", btns: ['are', 'can'], ans: 'are', s: 'neg', ex: "confusing 係 -ing 形容詞 (令人困惑的)，用 ARE。", zh: "因為它們令人困惑" },
+            { r: "no technical issues", btns: ['have', 'are'], ans: 'have', s: 'pos', ex: "no + 名詞 (issues)，用 HAVE。", zh: "因為它們沒有技術問題" },
+            { r: "for school use", btns: ['are', 'have'], ans: 'are', s: 'pos', ex: "for 字頭，用 ARE。", zh: "因為它們是供學校使用的" }
+        ].map(q => ({...q, board: randomBoard(), pref: q.s === 'pos' ? '✅' : '❌'}));
+
+        let bossHistory = [];
+        let currentMiniBoss = 0;
+        let maxBossReached = 0;
+
+        function loadBoss() {
+            if (currentMiniBoss >= 10) {
+                document.getElementById('boss-board-name').innerText = "🏆 成功拆解！";
+                document.getElementById('boss-pref-icon').innerText = "";
+                document.getElementById('boss-reason-box').innerText = "You defeated all Mini Bosses!";
+                document.getElementById('boss-reason-text').innerText = "defeated the bosses";
+                document.getElementById('boss-blank').innerText = "have";
+                document.getElementById('boss-blank').style.borderColor = "#10b981";
+                document.getElementById('boss-blank').className = "blank-space text-green-500";
+                document.getElementById('boss-buttons').innerHTML = "";
+                document.getElementById('boss-feedback').innerHTML = "<span class='text-2xl font-black text-green-600'>超勁！伏位全部破解！</span>";
+                document.getElementById('boss-feedback').className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-green-50";
+                document.getElementById('boss-feedback').classList.remove('hidden');
+                document.getElementById('boss-next').disabled = true;
+                triggerReward(true);
+                return;
+            }
+
+            const q = miniBossData[currentMiniBoss];
+            document.getElementById('boss-qnum').innerText = currentMiniBoss + 1;
+            document.getElementById('boss-board-name').innerText = q.board;
+            document.getElementById('boss-pref-icon').innerText = q.pref;
+            document.getElementById('boss-reason-box').innerText = q.r;
+            document.getElementById('boss-reason-text').innerText = q.r;
+            
+            const blank = document.getElementById('boss-blank');
+            const feedback = document.getElementById('boss-feedback');
+            const btns = document.getElementById('boss-buttons');
+
+            document.getElementById('boss-prev').disabled = (currentMiniBoss === 0);
+            document.getElementById('boss-next').disabled = (currentMiniBoss >= maxBossReached);
+
+            if (bossHistory[currentMiniBoss] && bossHistory[currentMiniBoss].correct) {
+                const h = bossHistory[currentMiniBoss];
+                blank.innerText = h.ans;
+                btns.classList.add('hidden');
+                feedback.classList.remove('hidden');
+
+                blank.style.borderColor = "#10b981";
+                blank.className = `blank-space text-green-500`;
+                feedback.innerHTML = `<span class="text-green-600 font-bold text-xl">✅ 擊殺成功！<br></span><span class="text-slate-600 mt-2 block">${q.ex}</span>
+                <div class="mt-3 p-3 bg-white/60 rounded-lg text-slate-700 font-bold border-l-4 border-emerald-500 shadow-sm text-left">💡 意思: ${q.zh}</div>`;
+                feedback.className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-green-50 border-2 border-green-200";
+            } else {
+                blank.innerText = "";
+                blank.style.borderColor = "#94a3b8";
+                blank.className = "blank-space";
+                
+                let btnHtml = "";
+                q.btns.forEach(btn => {
+                    btnHtml += `<button onclick="checkBoss('${btn}')" class="px-6 py-3 bg-white border-4 border-purple-200 text-purple-700 font-black text-2xl rounded-2xl hover:bg-purple-50 transition-all shadow-sm">${btn}</button>`;
+                });
+                btns.innerHTML = btnHtml;
+                btns.classList.remove('hidden');
+                feedback.classList.add('hidden');
+            }
+        }
+
+        function checkBoss(ans) {
+            const q = miniBossData[currentMiniBoss];
+            const correct = (ans === q.ans);
+            
+            if (correct) {
+                bossHistory[currentMiniBoss] = { ans, correct };
+                triggerReward(false);
+                if (currentMiniBoss === maxBossReached) maxBossReached++;
+                loadBoss();
+                if(currentMiniBoss === maxBossReached - 1) {
+                    setTimeout(() => navBoss(1), 2000);
+                }
+            } else {
+                document.getElementById('act2-container').classList.add('animate-flash-red');
+                setTimeout(() => document.getElementById('act2-container').classList.remove('animate-flash-red'), 800);
+                
+                const blank = document.getElementById('boss-blank');
+                const feedback = document.getElementById('boss-feedback');
+                
+                blank.innerText = "❌";
+                blank.style.borderColor = "#f43f5e";
+                blank.className = `blank-space text-red-500`;
+                
+                let hint = "再諗下秘訣係咩？";
+                if(q.r.includes("no ")) hint = "見到 <strong class='text-purple-700'>NO 加名詞</strong> (e.g. no functions)，諗下代表件貨「冇」啲乜？";
+                else if(q.r.includes("for ")) hint = "見到 <strong class='text-purple-700'>FOR 字頭</strong>，前面要加咩？";
+                else if(q.r.includes("ing") || q.r.includes("limited")) hint = "呢個字喺度係形容緊件貨 (<strong class='text-purple-700'>形容詞</strong>)！";
+
+                feedback.innerHTML = `<span class="text-red-600 font-bold text-xl">❌ 陣亡！再試多次！</span><br><span class="text-slate-600 mt-2 block leading-relaxed">💡 提示：${hint}</span>`;
+                feedback.className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-red-50 border-2 border-red-200 shadow-sm";
+                feedback.classList.remove('hidden');
+
+                setTimeout(() => {
+                    blank.innerText = "";
+                    blank.style.borderColor = "#94a3b8";
+                    blank.className = "blank-space";
+                }, 1500);
+            }
+        }
+
+        function navBoss(dir) {
+            currentMiniBoss += dir;
+            loadBoss();
+        }
+
+        // ==========================================
+        // ACTIVITY 3: THE ULTIMATE BOSS (PASSIVE)
+        // ==========================================
+        function playUbossIntro(step) {
+            if (step === 2) {
+                document.getElementById('uboss-step-1').classList.add('hidden');
+                document.getElementById('uboss-step-2').classList.remove('hidden');
+                document.getElementById('act3-container').classList.add('bg-slate-900', 'border-red-500');
+                document.getElementById('act3-container').classList.remove('border-amber-300');
+            } else if (step === 3) {
+                document.getElementById('uboss-intro-stage').classList.add('hidden');
+                document.getElementById('uboss-explanation').classList.remove('hidden');
+                document.getElementById('act3-container').classList.remove('bg-slate-900', 'border-red-500');
+                document.getElementById('act3-container').classList.add('border-amber-300');
+            }
+        }
+        
+        const ultimateBossData = [
+            { raw: "technical issues identified yesterday", sub: "technical issues", ed: "identified", rest: "yesterday", ans: "were", s: "neg", exZh: "'issues' 有 -s (眾數)，加 'yesterday' (過去)，用 WERE。", zh: "因為技術問題在昨天被發現了" },
+            { raw: "a high budget required for the installation", sub: "a high budget", ed: "required", rest: "for the installation", ans: "is", s: "neg", exZh: "'budget' 只有一個 (單數)，沒有過去提示，用 IS。", zh: "因為安裝需要很高的預算" },
+            { raw: "normal classes disturbed by the setup", sub: "normal classes", ed: "disturbed", rest: "by the setup", ans: "are", s: "neg", exZh: "'classes' 有 -es (眾數)，用 ARE。", zh: "因為正常的課堂被安裝過程打擾了" },
+            { raw: "student engagement limited by the physical board", sub: "student engagement", ed: "limited", rest: "by the physical board", ans: "is", s: "neg", exZh: "'engagement' 係概念 (單數)，用 IS。", zh: "因為學生的參與度被實體黑板限制了" },
+            { raw: "a quick delivery confirmed", sub: "a quick delivery", ed: "confirmed", rest: "", ans: "is", s: "pos", exZh: "'delivery' 只有一個，用 IS。", zh: "因為快速的送貨被確認了" },
+            { raw: "multimedia functions provided", sub: "multimedia functions", ed: "provided", rest: "", ans: "are", s: "pos", exZh: "'functions' 有 -s，用 ARE。", zh: "因為提供了多媒體功能" },
+            { raw: "clear guidelines explained", sub: "clear guidelines", ed: "explained", rest: "", ans: "are", s: "pos", exZh: "'guidelines' 有 -s，用 ARE。", zh: "因為清晰的指引被解釋了" },
+            { raw: "practical functions allowed", sub: "practical functions", ed: "allowed", rest: "", ans: "are", s: "pos", exZh: "'functions' 有 -s，用 ARE。", zh: "因為實用的功能被允許了" },
+            { raw: "teaching effectiveness enhanced", sub: "teaching effectiveness", ed: "enhanced", rest: "", ans: "is", s: "pos", exZh: "'effectiveness' 係單數概念，用 IS。", zh: "因為教學效能被提升了" },
+            { raw: "the learning process interrupted", sub: "the learning process", ed: "interrupted", rest: "", ans: "is", s: "neg", exZh: "'process' 只有一個過程，用 IS。", zh: "因為學習過程被打斷了" },
+            { raw: "student attention drawn", sub: "student attention", ed: "drawn", rest: "", ans: "is", s: "pos", exZh: "'attention' 係單數不可數，用 IS。 (drawn 係 draw 嘅被動！)", zh: "因為學生的注意力被吸引了" },
+            { raw: "potential problems avoided", sub: "potential problems", ed: "avoided", rest: "", ans: "are", s: "pos", exZh: "'problems' 有 -s，用 ARE。", zh: "因為潛在的問題被避免了" },
+            { raw: "a product demonstration scheduled", sub: "a product demonstration", ed: "scheduled", rest: "", ans: "is", s: "pos", exZh: "'demonstration' 只有一個，用 IS。", zh: "因為產品示範被安排了" },
+            { raw: "the boards installed smoothly", sub: "the boards", ed: "installed", rest: "smoothly", ans: "are", s: "pos", exZh: "'boards' 有 -s，用 ARE。", zh: "因為黑板被順利地安裝了" },
+            { raw: "clear measurements required", sub: "clear measurements", ed: "required", rest: "", ans: "are", s: "pos", exZh: "'measurements' 有 -s，用 ARE。", zh: "因為需要清晰的尺寸" },
+            { raw: "the delivery affected before the class", sub: "the delivery", ed: "affected", rest: "before the class", ans: "was", s: "neg", exZh: "'delivery' 單數，有 'before' 提示係過去發生嘅事，用 WAS 更適合。", zh: "因為送貨在課堂前被影響了" },
+            { raw: "interactive features demonstrated", sub: "interactive features", ed: "demonstrated", rest: "", ans: "are", s: "pos", exZh: "'features' 有 -s，用 ARE。", zh: "因為互動功能被示範了" },
+            { raw: "the budget approved last week", sub: "the budget", ed: "approved", rest: "last week", ans: "was", s: "pos", exZh: "'budget' 單數，有 'last week' (過去)，用 WAS。", zh: "因為預算在上星期被批准了" },
+            { raw: "technical requirements identified", sub: "technical requirements", ed: "identified", rest: "", ans: "are", s: "pos", exZh: "'requirements' 有 -s，用 ARE。", zh: "因為技術要求被找出了" },
+            { raw: "an on-site demonstration arranged", sub: "an on-site demonstration", ed: "arranged", rest: "", ans: "is", s: "pos", exZh: "'demonstration' 只有一個，用 IS。", zh: "因為實地示範被安排了" }
+        ].map(q => ({...q, board: randomBoard(), pref: q.s === 'pos' ? '✅' : '❌'}));
+
+        let ubossHistory = [];
+        let currentUBoss = 0;
+        let maxUBossReached = 0;
+
+        function loadUltimateBoss() {
+            if (currentUBoss >= 20) {
+                document.getElementById('uboss-board-name').innerText = "🎉 遊戲通關！";
+                document.getElementById('uboss-pref-icon').innerText = "";
+                document.getElementById('uboss-reason-box').innerText = "You defeated the Ultimate Boss!";
+                document.getElementById('uboss-subject').innerText = "You";
+                document.getElementById('uboss-blank').innerText = "are";
+                document.getElementById('uboss-edword').innerText = "unstoppable";
+                document.getElementById('uboss-rest').innerText = "!";
+                document.getElementById('uboss-blank').style.borderColor = "#10b981";
+                document.getElementById('uboss-blank').className = "blank-space text-green-500";
+                document.getElementById('uboss-buttons').innerHTML = "";
+                document.getElementById('uboss-feedback').innerHTML = "<span class='text-4xl font-black text-amber-600 block mt-4 mb-2'>神級境界！</span><br><span class='text-xl text-amber-700'>你已經完全掌握被動語態！<br>Passive Voice Master!</span>";
+                document.getElementById('uboss-feedback').className = "p-8 rounded-3xl font-bold text-center mb-8 bg-gradient-to-br from-amber-100 to-orange-100 border-4 border-amber-300 shadow-xl";
+                document.getElementById('uboss-feedback').classList.remove('hidden');
+                document.getElementById('uboss-next').disabled = true;
+                triggerReward(true);
+                return;
+            }
+
+            const q = ultimateBossData[currentUBoss];
+            document.getElementById('uboss-qnum').innerText = currentUBoss + 1;
+            document.getElementById('uboss-board-name').innerText = q.board;
+            document.getElementById('uboss-pref-icon').innerText = q.pref;
+            
+            // Highlight the -ed word (and 'before' if present)
+            let htmlRaw = q.raw.replace(q.ed, `<span class="text-red-600 border-b-4 border-dashed border-red-300">${q.ed}</span>`);
+            if (htmlRaw.includes("before")) {
+                htmlRaw = htmlRaw.replace("before", `<span class="text-amber-500 border-b-4 border-amber-400">before</span>`);
+            }
+            document.getElementById('uboss-reason-box').innerHTML = htmlRaw;
+            
+            document.getElementById('uboss-subject').innerText = q.sub;
+            document.getElementById('uboss-edword').innerText = q.ed;
+            if(q.rest) {
+                document.getElementById('uboss-rest').innerText = q.rest;
+                document.getElementById('uboss-rest').classList.remove('hidden');
+            } else {
+                document.getElementById('uboss-rest').classList.add('hidden');
+            }
+            
+            const blank = document.getElementById('uboss-blank');
+            const feedback = document.getElementById('uboss-feedback');
+            const btns = document.getElementById('uboss-buttons');
+
+            document.getElementById('uboss-prev').disabled = (currentUBoss === 0);
+            document.getElementById('uboss-next').disabled = (currentUBoss >= maxUBossReached);
+
+            if (ubossHistory[currentUBoss] && ubossHistory[currentUBoss].correct) {
+                const h = ubossHistory[currentUBoss];
+                blank.innerText = h.ans;
+                btns.classList.add('hidden');
+                feedback.classList.remove('hidden');
+
+                blank.style.borderColor = "#10b981";
+                blank.className = `blank-space text-green-500`;
+                feedback.innerHTML = `<span class="text-green-600 font-bold text-xl">✅ 完美避開！<br></span><span class="text-slate-600 mt-2 block">${q.exZh}</span>
+                <div class="mt-3 p-3 bg-white/60 rounded-lg text-slate-700 font-bold border-l-4 border-emerald-500 shadow-sm text-left">💡 意思: ${q.zh}</div>`;
+                feedback.className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-green-50 border-2 border-green-200";
+            } else {
+                blank.innerText = "";
+                blank.style.borderColor = "#fbbf24"; 
+                blank.className = "blank-space";
+                btns.classList.remove('hidden');
+                feedback.classList.add('hidden');
+            }
+        }
+
+        function checkUltimateBoss(ans) {
+            const q = ultimateBossData[currentUBoss];
+            const correct = (ans === q.ans || (q.ed==='affected' && ans==='was')); 
+            
+            if (correct) {
+                ubossHistory[currentUBoss] = { ans, correct };
+                triggerReward(false);
+                if (currentUBoss === maxUBossReached) maxUBossReached++;
+                loadUltimateBoss();
+                if(currentUBoss === maxUBossReached - 1) {
+                    setTimeout(() => navUBoss(1), 2500);
+                }
+            } else {
+                document.getElementById('act3-container').classList.add('animate-flash-red');
+                setTimeout(() => document.getElementById('act3-container').classList.remove('animate-flash-red'), 800);
+                
+                const blank = document.getElementById('uboss-blank');
+                const feedback = document.getElementById('uboss-feedback');
+                
+                blank.innerText = "❌";
+                blank.style.borderColor = "#f43f5e";
+                blank.className = `blank-space text-red-500`;
+                
+                feedback.innerHTML = `<span class="text-red-600 font-bold text-xl">❌ 中伏！睇清楚啲提示再試下！</span><br><br>
+                <div class="bg-white/60 p-5 rounded-xl text-slate-600 font-normal text-left shadow-sm">
+                    問問自己：<br>
+                    🔍 藍色嘅新主角 ("<strong class="text-indigo-600">${q.sub}</strong>") 是一個還是很多個 (有無 's')？<br>
+                    🔍 句子最後有沒有過去時間的提示字 (e.g. yesterday, <strong class="text-amber-500">before</strong>, last week)?
+                </div>`;
+                feedback.className = "p-6 rounded-2xl font-bold text-xl text-center mb-8 bg-red-50 border-2 border-red-200 shadow-sm";
+                feedback.classList.remove('hidden');
+
+                setTimeout(() => {
+                    blank.innerText = "";
+                    blank.style.borderColor = "#fbbf24";
+                    blank.className = "blank-space";
+                }, 1500);
+            }
+        }
+
+        function navUBoss(dir) {
+            currentUBoss += dir;
+            loadUltimateBoss();
+        }
+
+        // --- Reward System ---
+        function triggerReward(massive = false) {
+            if (document.body.classList.contains('mode-calm')) return; 
+            
+            if (massive) {
+                var duration = 4 * 1000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) { return clearInterval(interval); }
+                    var particleCount = 60 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } }));
+                }, 250);
+            } else {
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.6 },
+                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444']
+                });
+            }
+        }
+
+        // Init All
+        initGrinder();
+        loadGrinder();
+        loadBoss();
+        loadUltimateBoss();
+
+    </script>
+</body>
+</html>
